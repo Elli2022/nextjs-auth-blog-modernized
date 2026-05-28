@@ -10,7 +10,7 @@ export function ModeToggle() {
   return (
     <Button onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
       {theme === "dark" ? <Sun size="1.2rem" /> : <Moon size="1.2rem" />}
-      <span className="sr-only">Toggle theme</span>
+      <span className="sr-only"></span>
     </Button>
   );
 }
