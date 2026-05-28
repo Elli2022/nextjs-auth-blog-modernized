@@ -1,11 +1,13 @@
 import {
   insertOneDocument,
-  updateDocument as makeUpdateDocument,
   findDocuments as makeFindDocuments,
+  updateDocument as makeUpdateDocument,
 } from "../../libs/mongodb";
 
-const insertDocument = ({ document, dbConfig }) =>
-  insertOneDocument({ document, ...dbConfig });
+export const insertDocument = async ({ document }) => {
+  const newUser = await insertOneDocument({ document });
+  return newUser; // Se till att denna returnerar det sparade användarobjektet
+};
 
 const updateDocument = ({ query, values, dbConfig }) =>
   makeUpdateDocument({ query, values, ...dbConfig });
@@ -13,4 +15,4 @@ const updateDocument = ({ query, values, dbConfig }) =>
 const findDocuments = ({ query, dbConfig }) =>
   makeFindDocuments({ query, ...dbConfig });
 
-export { findDocuments, insertDocument, updateDocument };
+export { findDocuments, updateDocument };

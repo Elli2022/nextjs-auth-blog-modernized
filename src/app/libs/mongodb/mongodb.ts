@@ -3,13 +3,13 @@ export default function makeDB({ dbClient }) {
     insertOneDocument,
     findDocuments,
     updateDocument,
-    dropDb
-  })
-  
+    dropDb,
+  });
+
   async function insertOneDocument({ document, dbName, dbUri, dbColl }) {
     const db = new dbClient({ dbName, dbUri, dbColl });
-    const results = await db.insertDocument({ document })
- 
+    const results = await db.insertDocument({ document });
+
     return results;
   }
 
