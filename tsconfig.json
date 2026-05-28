@@ -26,5 +26,8 @@
 		"src/app/**/*.json",
 		"coverage",
 		"src/test"
+	],
+	"include": [
+		"src/**/*.ts"
 	]
 }
