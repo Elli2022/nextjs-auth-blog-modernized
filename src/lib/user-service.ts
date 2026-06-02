@@ -9,6 +9,11 @@ type RegisterInput = {
   password: string;
 };
 
+type LoginInput = {
+  email: string;
+  password: string;
+};
+
 function sanitize(value: string) {
   return sanitizeHtml(value, { allowedTags: [], allowedAttributes: {} });
 }
@@ -59,4 +64,31 @@ export async function registerUser(input: RegisterInput) {
 
   const { password: _password, ...safeUser } = saved;
   return safeUser;
+}
+
+export async function loginUser(input: LoginInput) {
+  assertDbConfig();
+
+  const email = sanitize(input.email?.trim().toLowerCase() || "");
+  const password = input.password || "";
+
+  if (!email || !isEmail(email)) throw new Error("invalid email");
+  if (!password) throw new Error("missing parameter: password");
+
+  const users = await getUsersCollection();
+  const user = await users.findOne({ email });
+
+  if (!user) {
+    throw new Error("user not found");
+  }
+
+  const hashedPassword = hashPassword(password);
+  if (user.password !== hashedPassword) {
+    throw new Error("incorrect password");
+  }
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const { password: _password, ...safeUser } = user;
+
+  return { token, user: safeUser };
 }
