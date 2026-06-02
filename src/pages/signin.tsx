@@ -1,5 +1,8 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/router";
+import type { GetServerSideProps } from "next";
+import FormAlert from "@/components/FormAlert";
+import { guestRedirectIfSession } from "@/lib/session";
 
 export default function SignIn() {
   const router = useRouter();
@@ -37,8 +40,8 @@ export default function SignIn() {
       setMessage(payload.message ?? "Sign in successful");
       setTimeout(() => {
         router.push("/dashboard");
-      }, 700);
-    } catch (error) {
+      }, 500);
+    } catch {
       setStatus("error");
       setMessage("Unexpected error. Please try again.");
     }
@@ -60,6 +63,7 @@ export default function SignIn() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-300 transition focus:ring dark:border-slate-700 dark:bg-slate-950"
+            required
           />
         </label>
         <label className="block">
@@ -70,29 +74,31 @@ export default function SignIn() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-300 transition focus:ring dark:border-slate-700 dark:bg-slate-950"
+            required
           />
         </label>
 
         <button
           type="submit"
           disabled={status === "loading"}
-          className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+          className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
         >
           {status === "loading" ? "Signing in..." : "Sign in"}
         </button>
       </form>
 
       {message ? (
-        <p
-          className={`mt-4 text-sm ${
-            status === "success"
-              ? "text-emerald-600 dark:text-emerald-400"
-              : "text-rose-600 dark:text-rose-400"
-          }`}
-        >
-          {message}
-        </p>
+        <FormAlert
+          message={message}
+          variant={status === "success" ? "success" : "error"}
+        />
       ) : null}
     </section>
   );
 }
+
+export const getServerSideProps: GetServerSideProps = async ({ req }) => {
+  const redirect = guestRedirectIfSession(req);
+  if (redirect) return redirect;
+  return { props: {} };
+};

@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getPostsCollection } from "@/lib/mongodb";
-import { assertAuthConfig, assertDbConfig, jwtSecret } from "@/lib/config";
-import { getSessionCookieName, verifySessionToken } from "@/lib/auth";
+import { assertDbConfig } from "@/lib/config";
+import { getSessionFromRequest } from "@/lib/session";
 
 export default async function handler(
   req: NextApiRequest,
@@ -9,23 +9,15 @@ export default async function handler(
 ) {
   try {
     assertDbConfig();
-    assertAuthConfig();
-  } catch (error) {
+  } catch {
     return res.status(500).json({
       error:
         "Server is not configured yet (missing MONGODB_URI). Add environment variables and redeploy.",
     });
   }
 
-  const sessionToken = req.cookies[getSessionCookieName()];
-  if (!sessionToken) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
-  let sessionUser: { email: string; username: string };
-  try {
-    sessionUser = verifySessionToken(sessionToken, jwtSecret);
-  } catch (error) {
+  const sessionUser = getSessionFromRequest(req);
+  if (!sessionUser) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 

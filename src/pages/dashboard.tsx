@@ -1,8 +1,13 @@
 import { FormEvent, useMemo, useState } from "react";
 import type { GetServerSideProps } from "next";
 import { getPostsCollection } from "@/lib/mongodb";
-import { assertAuthConfig, assertDbConfig, jwtSecret } from "@/lib/config";
-import { getSessionCookieName, verifySessionToken } from "@/lib/auth";
+import { assertDbConfig } from "@/lib/config";
+import {
+  getSessionFromRequest,
+  requireSessionRedirect,
+  type SessionUser,
+} from "@/lib/session";
+import FormAlert from "@/components/FormAlert";
 
 type Post = {
   _id: string;
@@ -12,13 +17,8 @@ type Post = {
   commentsCount?: number;
 };
 
-type AuthUser = {
-  email: string;
-  username: string;
-};
-
 type DashboardProps = {
-  user: AuthUser;
+  user: SessionUser;
   initialPosts: Post[];
 };
 
@@ -27,41 +27,96 @@ export default function Dashboard({ user, initialPosts }: DashboardProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [status, setStatus] = useState<"draft" | "published">("draft");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [alertVariant, setAlertVariant] = useState<"success" | "error" | "info">(
+    "info"
+  );
+
+  function showAlert(text: string, variant: "success" | "error" | "info") {
+    setMessage(text);
+    setAlertVariant(variant);
+  }
 
   async function fetchPosts() {
     const response = await fetch("/api/posts");
+    if (response.status === 401) {
+      window.location.href = "/signin";
+      return;
+    }
     const payload = await response.json();
     if (response.ok) {
       setPosts(payload.data ?? []);
+    } else {
+      showAlert(payload.error ?? "Could not load posts", "error");
     }
   }
 
-  async function handleCreatePost(event: FormEvent<HTMLFormElement>) {
+  function resetComposer() {
+    setTitle("");
+    setContent("");
+    setStatus("draft");
+    setEditingId(null);
+  }
+
+  function startEdit(post: Post) {
+    setEditingId(post._id);
+    setTitle(post.title);
+    setContent(post.content);
+    setStatus(post.status);
+    showAlert("Editing post — save to apply changes.", "info");
+  }
+
+  async function handleSubmitPost(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setMessage("");
+
     try {
-      const response = await fetch("/api/posts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          content,
-          status,
-        }),
-      });
+      const isEditing = Boolean(editingId);
+      const response = await fetch(
+        isEditing ? `/api/posts/${editingId}` : "/api/posts",
+        {
+          method: isEditing ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, content, status }),
+        }
+      );
       const payload = await response.json();
+
       if (!response.ok) {
-        setMessage(payload.error ?? "Could not create post");
+        showAlert(payload.error ?? "Could not save post", "error");
         return;
       }
-      setTitle("");
-      setContent("");
-      setStatus("draft");
-      setMessage("Post saved");
+
+      resetComposer();
+      showAlert(isEditing ? "Post updated" : "Post created", "success");
       await fetchPosts();
+    } catch {
+      showAlert("Unexpected error. Please try again.", "error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDeletePost(postId: string) {
+    const confirmed = window.confirm("Delete this post permanently?");
+    if (!confirmed) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/posts/${postId}`, { method: "DELETE" });
+      const payload = await response.json();
+      if (!response.ok) {
+        showAlert(payload.error ?? "Could not delete post", "error");
+        return;
+      }
+      if (editingId === postId) resetComposer();
+      showAlert("Post deleted", "success");
+      await fetchPosts();
+    } catch {
+      showAlert("Unexpected error. Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -83,7 +138,7 @@ export default function Dashboard({ user, initialPosts }: DashboardProps) {
       <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          {`Welcome ${user.username}. Create and manage your own posts below.`}
+          Welcome {user.username}. Create, edit, and publish your posts below.
         </p>
       </header>
 
@@ -108,10 +163,12 @@ export default function Dashboard({ user, initialPosts }: DashboardProps) {
 
       <section className="grid gap-6 lg:grid-cols-2">
         <form
-          onSubmit={handleCreatePost}
+          onSubmit={handleSubmitPost}
           className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
         >
-          <h2 className="text-xl font-semibold">Write a post</h2>
+          <h2 className="text-xl font-semibold">
+            {editingId ? "Edit post" : "Write a post"}
+          </h2>
           <div className="mt-4 space-y-4">
             <input
               value={title}
@@ -137,15 +194,30 @@ export default function Dashboard({ user, initialPosts }: DashboardProps) {
               <option value="draft">Draft</option>
               <option value="published">Published</option>
             </select>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
-            >
-              {loading ? "Saving..." : "Save post"}
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
+              >
+                {loading
+                  ? "Saving..."
+                  : editingId
+                    ? "Update post"
+                    : "Save post"}
+              </button>
+              {editingId ? (
+                <button
+                  type="button"
+                  onClick={resetComposer}
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
+              ) : null}
+            </div>
             {message ? (
-              <p className="text-sm text-slate-600 dark:text-slate-300">{message}</p>
+              <FormAlert message={message} variant={alertVariant} />
             ) : null}
           </div>
         </form>
@@ -159,15 +231,31 @@ export default function Dashboard({ user, initialPosts }: DashboardProps) {
                   key={post._id}
                   className="rounded-lg border border-slate-200 p-4 dark:border-slate-800"
                 >
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-start justify-between gap-4">
                     <h3 className="font-semibold">{post.title}</h3>
-                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                    <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-xs uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                       {post.status}
                     </span>
                   </div>
                   <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
                     {post.content}
                   </p>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => startEdit(post)}
+                      className="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePost(post._id)}
+                      className="rounded-md bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 transition hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/40"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </article>
               ))
             ) : (
@@ -187,27 +275,22 @@ export const getServerSideProps: GetServerSideProps<DashboardProps> = async ({
 }) => {
   try {
     assertDbConfig();
-    assertAuthConfig();
+    const session = getSessionFromRequest(req);
+    if (!session) return requireSessionRedirect();
 
-    const token = req.cookies[getSessionCookieName()];
-    if (!token) {
-      return { redirect: { destination: "/signin", permanent: false } };
-    }
-
-    const user = verifySessionToken(token, jwtSecret);
     const postsCollection = await getPostsCollection();
     const posts = await postsCollection
-      .find({ authorEmail: user.email })
+      .find({ authorEmail: session.email })
       .sort({ createdAt: -1 })
       .toArray();
 
     return {
       props: {
-        user,
+        user: session,
         initialPosts: JSON.parse(JSON.stringify(posts)),
       },
     };
-  } catch (error) {
-    return { redirect: { destination: "/signin", permanent: false } };
+  } catch {
+    return requireSessionRedirect();
   }
 };
