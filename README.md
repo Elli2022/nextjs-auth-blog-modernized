@@ -6,6 +6,8 @@ Modernized Next.js project with cleaner UI, improved navigation, reusable page l
 
 https://my-nextjs-project-modernized.netlify.app
 
+**Related portfolio project:** [nodejs-microservice-exercises](https://github.com/Elli2022/nodejs-microservice-exercises) — Express REST API with Neon Postgres ([live API](https://nodejs-microservice-exercises.onrender.com)).
+
 ## Highlights
 
 - Modernized, responsive UI for Home, Register, Sign in, and Dashboard pages.
@@ -44,6 +46,13 @@ Copy `.env.example` to `.env.local` and set:
 - `MONGODB_URI`
 - `MONGODB_DB_NAME`
 - `MONGODB_COLLECTION`
+- `JWT_SECRET`
+
+## Smoke test (production)
+
+```bash
+npm run smoke
+```
 
 ## Build
 

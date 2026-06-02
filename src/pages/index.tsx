@@ -51,6 +51,34 @@ const Home = () => {
         </div>
       </div>
 
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900/50 dark:bg-emerald-950/30">
+        <h2 className="font-semibold text-emerald-900 dark:text-emerald-200">
+          Sister project: Node.js microservice
+        </h2>
+        <p className="mt-2 text-sm text-emerald-800 dark:text-emerald-300">
+          This app is the fullstack UI. The companion repo deploys a live Express
+          API with Neon Postgres on Render.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-3 text-sm font-semibold">
+          <a
+            href="https://nodejs-microservice-exercises.onrender.com/health"
+            target="_blank"
+            rel="noreferrer"
+            className="text-emerald-700 underline underline-offset-2 dark:text-emerald-300"
+          >
+            Live API
+          </a>
+          <a
+            href="https://github.com/Elli2022/nodejs-microservice-exercises"
+            target="_blank"
+            rel="noreferrer"
+            className="text-emerald-700 underline underline-offset-2 dark:text-emerald-300"
+          >
+            GitHub
+          </a>
+        </div>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {[
           "Theme toggle",
