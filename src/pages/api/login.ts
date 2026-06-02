@@ -1,13 +1,33 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { loginUser } from "@/lib/user-service";
+import { assertAuthConfig, jwtSecret } from "@/lib/config";
+import { getSessionCookieName, signSessionToken } from "@/lib/auth";
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  try {
+    assertAuthConfig();
+  } catch (error) {
+    return res.status(500).json({ error: "JWT_SECRET is not configured" });
+  }
+
   return loginUser(req.body)
     .then(({ token, user }) => {
+      const sessionToken = signSessionToken(
+        { email: String(user.email), username: String(user.username) },
+        jwtSecret
+      );
+      const isProd = process.env.NODE_ENV === "production";
+      res.setHeader(
+        "Set-Cookie",
+        `${getSessionCookieName()}=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${
+          isProd ? "; Secure" : ""
+        }`
+      );
+
       return res.status(200).json({
         message: "Sign in successful",
         token,

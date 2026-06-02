@@ -30,8 +30,6 @@ export default function SignIn() {
       }
 
       if (typeof window !== "undefined") {
-        localStorage.setItem("auth_token", payload.token);
-        localStorage.setItem("auth_user", JSON.stringify(payload.user));
         window.dispatchEvent(new Event("auth-changed"));
       }
 

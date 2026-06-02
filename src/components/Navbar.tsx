@@ -1,21 +1,25 @@
 import Link from "next/link";
 import React, { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
 
 export default function Navbar() {
+  const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    const syncAuthState = () => {
-      if (typeof window === "undefined") return;
-      const token = localStorage.getItem("auth_token");
-      setIsLoggedIn(Boolean(token));
+    const syncAuthState = async () => {
+      try {
+        const response = await fetch("/api/session");
+        const payload = await response.json();
+        setIsLoggedIn(Boolean(payload.authenticated));
+      } catch (error) {
+        setIsLoggedIn(false);
+      }
     };
 
-    syncAuthState();
-    window.addEventListener("storage", syncAuthState);
+    void syncAuthState();
     window.addEventListener("auth-changed", syncAuthState);
     return () => {
-      window.removeEventListener("storage", syncAuthState);
       window.removeEventListener("auth-changed", syncAuthState);
     };
   }, []);
@@ -35,11 +39,11 @@ export default function Navbar() {
     [isLoggedIn]
   );
 
-  function handleLogout() {
+  async function handleLogout() {
+    await fetch("/api/logout", { method: "POST" });
     if (typeof window === "undefined") return;
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("auth_user");
     window.dispatchEvent(new Event("auth-changed"));
+    router.push("/signin");
   }
 
   return (

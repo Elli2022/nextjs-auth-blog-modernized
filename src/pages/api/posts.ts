@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getPostsCollection } from "@/lib/mongodb";
-import { assertDbConfig } from "@/lib/config";
+import { assertAuthConfig, assertDbConfig, jwtSecret } from "@/lib/config";
+import { getSessionCookieName, verifySessionToken } from "@/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
@@ -8,6 +9,7 @@ export default async function handler(
 ) {
   try {
     assertDbConfig();
+    assertAuthConfig();
   } catch (error) {
     return res.status(500).json({
       error:
@@ -15,15 +17,22 @@ export default async function handler(
     });
   }
 
-  if (req.method === "GET") {
-    const email = String(req.query.email || "").trim().toLowerCase();
-    if (!email) {
-      return res.status(400).json({ error: "missing query parameter: email" });
-    }
+  const sessionToken = req.cookies[getSessionCookieName()];
+  if (!sessionToken) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
 
+  let sessionUser: { email: string; username: string };
+  try {
+    sessionUser = verifySessionToken(sessionToken, jwtSecret);
+  } catch (error) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  if (req.method === "GET") {
     const postsCollection = await getPostsCollection();
     const posts = await postsCollection
-      .find({ authorEmail: email })
+      .find({ authorEmail: sessionUser.email })
       .sort({ createdAt: -1 })
       .toArray();
 
@@ -31,12 +40,12 @@ export default async function handler(
   }
 
   if (req.method === "POST") {
-    const { title, content, status, authorEmail } = req.body ?? {};
+    const { title, content, status } = req.body ?? {};
 
-    if (!title || !content || !authorEmail) {
+    if (!title || !content) {
       return res
         .status(400)
-        .json({ error: "title, content, and authorEmail are required" });
+        .json({ error: "title and content are required" });
     }
 
     const normalizedStatus = status === "published" ? "published" : "draft";
@@ -47,7 +56,7 @@ export default async function handler(
       title: String(title).trim(),
       content: String(content).trim(),
       status: normalizedStatus,
-      authorEmail: String(authorEmail).trim().toLowerCase(),
+      authorEmail: sessionUser.email,
       commentsCount: 0,
       createdAt: now,
       updatedAt: now,

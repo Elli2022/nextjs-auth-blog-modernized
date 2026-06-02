@@ -1,5 +1,8 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/router";
+import { FormEvent, useMemo, useState } from "react";
+import type { GetServerSideProps } from "next";
+import { getPostsCollection } from "@/lib/mongodb";
+import { assertAuthConfig, assertDbConfig, jwtSecret } from "@/lib/config";
+import { getSessionCookieName, verifySessionToken } from "@/lib/auth";
 
 type Post = {
   _id: string;
@@ -14,36 +17,21 @@ type AuthUser = {
   username: string;
 };
 
-export default function Dashboard() {
-  const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
+type DashboardProps = {
+  user: AuthUser;
+  initialPosts: Post[];
+};
+
+export default function Dashboard({ user, initialPosts }: DashboardProps) {
+  const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [status, setStatus] = useState<"draft" | "published">("draft");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const token = localStorage.getItem("auth_token");
-    const rawUser = localStorage.getItem("auth_user");
-    if (!token || !rawUser) {
-      router.push("/signin");
-      return;
-    }
-
-    const parsedUser = JSON.parse(rawUser) as AuthUser;
-    setUser(parsedUser);
-  }, [router]);
-
-  useEffect(() => {
-    if (!user?.email) return;
-    void fetchPosts(user.email);
-  }, [user?.email]);
-
-  async function fetchPosts(email: string) {
-    const response = await fetch(`/api/posts?email=${encodeURIComponent(email)}`);
+  async function fetchPosts() {
+    const response = await fetch("/api/posts");
     const payload = await response.json();
     if (response.ok) {
       setPosts(payload.data ?? []);
@@ -52,7 +40,6 @@ export default function Dashboard() {
 
   async function handleCreatePost(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!user?.email) return;
     setLoading(true);
     setMessage("");
     try {
@@ -63,7 +50,6 @@ export default function Dashboard() {
           title,
           content,
           status,
-          authorEmail: user.email,
         }),
       });
       const payload = await response.json();
@@ -75,7 +61,7 @@ export default function Dashboard() {
       setContent("");
       setStatus("draft");
       setMessage("Post saved");
-      await fetchPosts(user.email);
+      await fetchPosts();
     } finally {
       setLoading(false);
     }
@@ -97,9 +83,7 @@ export default function Dashboard() {
       <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          {user
-            ? `Welcome ${user.username}. Create and manage your own posts below.`
-            : "Loading account..."}
+          {`Welcome ${user.username}. Create and manage your own posts below.`}
         </p>
       </header>
 
@@ -197,3 +181,33 @@ export default function Dashboard() {
     </section>
   );
 }
+
+export const getServerSideProps: GetServerSideProps<DashboardProps> = async ({
+  req,
+}) => {
+  try {
+    assertDbConfig();
+    assertAuthConfig();
+
+    const token = req.cookies[getSessionCookieName()];
+    if (!token) {
+      return { redirect: { destination: "/signin", permanent: false } };
+    }
+
+    const user = verifySessionToken(token, jwtSecret);
+    const postsCollection = await getPostsCollection();
+    const posts = await postsCollection
+      .find({ authorEmail: user.email })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    return {
+      props: {
+        user,
+        initialPosts: JSON.parse(JSON.stringify(posts)),
+      },
+    };
+  } catch (error) {
+    return { redirect: { destination: "/signin", permanent: false } };
+  }
+};
