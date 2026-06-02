@@ -1,19 +1,114 @@
-export default function dashboard() {
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
+
+type Post = {
+  _id: string;
+  title: string;
+  content: string;
+  status: "draft" | "published";
+  commentsCount?: number;
+};
+
+type AuthUser = {
+  email: string;
+  username: string;
+};
+
+export default function Dashboard() {
+  const router = useRouter();
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [status, setStatus] = useState<"draft" | "published">("draft");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const token = localStorage.getItem("auth_token");
+    const rawUser = localStorage.getItem("auth_user");
+    if (!token || !rawUser) {
+      router.push("/signin");
+      return;
+    }
+
+    const parsedUser = JSON.parse(rawUser) as AuthUser;
+    setUser(parsedUser);
+  }, [router]);
+
+  useEffect(() => {
+    if (!user?.email) return;
+    void fetchPosts(user.email);
+  }, [user?.email]);
+
+  async function fetchPosts(email: string) {
+    const response = await fetch(`/api/posts?email=${encodeURIComponent(email)}`);
+    const payload = await response.json();
+    if (response.ok) {
+      setPosts(payload.data ?? []);
+    }
+  }
+
+  async function handleCreatePost(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!user?.email) return;
+    setLoading(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          content,
+          status,
+          authorEmail: user.email,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        setMessage(payload.error ?? "Could not create post");
+        return;
+      }
+      setTitle("");
+      setContent("");
+      setStatus("draft");
+      setMessage("Post saved");
+      await fetchPosts(user.email);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const stats = useMemo(() => {
+    const totalPosts = posts.length;
+    const drafts = posts.filter((post) => post.status === "draft").length;
+    const published = posts.filter((post) => post.status === "published").length;
+    const comments = posts.reduce(
+      (acc, post) => acc + Number(post.commentsCount || 0),
+      0
+    );
+    return { totalPosts, drafts, published, comments };
+  }, [posts]);
+
   return (
     <section className="space-y-6">
       <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Overview for your latest posts, account activity and quick actions.
+          {user
+            ? `Welcome ${user.username}. Create and manage your own posts below.`
+            : "Loading account..."}
         </p>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { title: "Posts", value: "12" },
-          { title: "Drafts", value: "3" },
-          { title: "Views", value: "1.4k" },
-          { title: "Comments", value: "48" },
+          { title: "Posts", value: String(stats.totalPosts) },
+          { title: "Drafts", value: String(stats.drafts) },
+          { title: "Published", value: String(stats.published) },
+          { title: "Comments", value: String(stats.comments) },
         ].map((card) => (
           <article
             key={card.title}
@@ -26,6 +121,79 @@ export default function dashboard() {
           </article>
         ))}
       </div>
+
+      <section className="grid gap-6 lg:grid-cols-2">
+        <form
+          onSubmit={handleCreatePost}
+          className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+        >
+          <h2 className="text-xl font-semibold">Write a post</h2>
+          <div className="mt-4 space-y-4">
+            <input
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder="Post title"
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-300 transition focus:ring dark:border-slate-700 dark:bg-slate-950"
+              required
+            />
+            <textarea
+              value={content}
+              onChange={(event) => setContent(event.target.value)}
+              placeholder="Write your post content..."
+              className="min-h-40 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-300 transition focus:ring dark:border-slate-700 dark:bg-slate-950"
+              required
+            />
+            <select
+              value={status}
+              onChange={(event) =>
+                setStatus(event.target.value as "draft" | "published")
+              }
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-300 transition focus:ring dark:border-slate-700 dark:bg-slate-950"
+            >
+              <option value="draft">Draft</option>
+              <option value="published">Published</option>
+            </select>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+            >
+              {loading ? "Saving..." : "Save post"}
+            </button>
+            {message ? (
+              <p className="text-sm text-slate-600 dark:text-slate-300">{message}</p>
+            ) : null}
+          </div>
+        </form>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="text-xl font-semibold">Your posts</h2>
+          <div className="mt-4 space-y-3">
+            {posts.length ? (
+              posts.map((post) => (
+                <article
+                  key={post._id}
+                  className="rounded-lg border border-slate-200 p-4 dark:border-slate-800"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <h3 className="font-semibold">{post.title}</h3>
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                      {post.status}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                    {post.content}
+                  </p>
+                </article>
+              ))
+            ) : (
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                No posts yet. Create your first draft on the left.
+              </p>
+            )}
+          </div>
+        </section>
+      </section>
     </section>
   );
 }

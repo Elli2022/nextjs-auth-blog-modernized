@@ -27,3 +27,8 @@ export async function getUsersCollection() {
   const db = await getDb();
   return db.collection(dbConfig.dbColl);
 }
+
+export async function getPostsCollection() {
+  const db = await getDb();
+  return db.collection("blogPosts");
+}
