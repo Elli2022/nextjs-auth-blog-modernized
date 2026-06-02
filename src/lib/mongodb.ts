@@ -30,5 +30,5 @@ export async function getUsersCollection() {
 
 export async function getPostsCollection() {
   const db = await getDb();
-  return db.collection("blogPosts");
+  return db.collection("posts");
 }
