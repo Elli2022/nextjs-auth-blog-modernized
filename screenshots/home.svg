@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+  <rect width="1200" height="700" fill="#0f172a"/>
+  <rect x="60" y="60" width="1080" height="580" rx="18" fill="#111827" stroke="#334155"/>
+  <text x="100" y="140" fill="#e2e8f0" font-size="46" font-family="Arial, sans-serif">My-Next.js-Project  Home</text>
+  <text x="100" y="200" fill="#93c5fd" font-size="28" font-family="Arial, sans-serif">Modernized hero, navigation, and feature cards</text>
+  <rect x="100" y="250" width="320" height="140" rx="12" fill="#1e293b"/>
+  <rect x="440" y="250" width="320" height="140" rx="12" fill="#1e293b"/>
+  <rect x="780" y="250" width="320" height="140" rx="12" fill="#1e293b"/>
+  <rect x="100" y="420" width="320" height="140" rx="12" fill="#1e293b"/>
+  <rect x="440" y="420" width="320" height="140" rx="12" fill="#1e293b"/>
+  <rect x="780" y="420" width="320" height="140" rx="12" fill="#1e293b"/>
+</svg>

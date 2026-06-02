@@ -1,7 +1,5 @@
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { Menu, Transition } from "@headlessui/react";
-import { Fragment } from "react";
 import React, { useState, useEffect } from "react";
 import Button from "@/components/ui/button";
 
@@ -16,9 +14,14 @@ export default function ModeToggle() {
   if (!isMounted) return null;
 
   return (
-    <Button onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-      {theme === "dark" ? <Sun size="1.2rem" /> : <Moon size="1.2rem" />}
-      <span className="sr-only"></span>
-    </Button>
+    <div className="fixed bottom-6 right-6 z-40">
+      <Button
+        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+        className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg transition hover:opacity-90 dark:bg-slate-100 dark:text-slate-900"
+        aria-label="Toggle theme"
+      >
+        {theme === "dark" ? <Sun size="1.2rem" /> : <Moon size="1.2rem" />}
+      </Button>
+    </div>
   );
 }

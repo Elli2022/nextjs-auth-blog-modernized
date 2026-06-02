@@ -1,33 +1,50 @@
 {
-	"ts-node": {
+  "ts-node": {
     "transpileOnly": true
   },
-	"compilerOptions": {
-		"allowJs": true,
-		"target": "es6",
-		"module": "commonjs",
-		"moduleResolution": "node",
-		"inlineSourceMap": true,
-		"outDir": "build",
-		"rootDir": "src",
-		"typeRoots": [
-			"./node_modules/@types",
-			"./typings"
-		],
-		"types": ["node", "mocha"],
-		"skipLibCheck": true
-	},
-	"exclude": [
-		"nodemon.json",
-		"node_modules",
-		"build",
-		"src/app/public",
-		"setup-env.js",
-		"src/app/**/*.json",
-		"coverage",
-		"src/test"
-	],
-	"include": [
-		"src/**/*.ts"
-	]
+  "compilerOptions": {
+    "target": "es2017",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "src/*"
+      ]
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "strictNullChecks": true
+  },
+  "include": [
+    "next-env.d.ts",
+    "src/pages/**/*.tsx",
+    "src/components/**/*.tsx",
+    "src/lib/**/*.ts",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "build",
+    "coverage",
+    "src/app/**/*.ts",
+    "src/tests/**/*.ts"
+  ]
 }

@@ -1,31 +1,58 @@
-# My Next.js Project
+# nextjs-auth-blog-modernized
 
-Next.js fullstack project with theme toggle, auth, and blog posts (2023).
+Modernized Next.js project with cleaner UI, improved navigation, reusable page layouts, and Netlify deployment.
 
-`master` is the integrated latest version. Earlier snapshots are available as branches.
+## Live demo
 
-## Version history
+https://my-nextjs-project-modernized.netlify.app
 
-| Branch | Description | Date |
-|--------|-------------|------|
-| `version/initial` | Initial project | 2023-11-09 |
-| `version/toggle-theme` | Toggle theme | 2023-11-10 |
-| `version/toggle-theme-icon` | Theme icon | 2023-11-10 |
-| `version/all-routings` | All routings | 2023-11-10 |
-| `version/user-register` | User register + backend | 2023-11-16 |
-| `version/error-logs` | Better error logs | 2023-11-19 |
-| `version/logout-blogpost` | Logout + blogpost | 2023-11-23 |
-| `version/logout-jwt` | Logout JWT cache | 2023-11-24 |
-| `master` | Integrated latest | 2023+ |
+## Highlights
 
-```bash
-git checkout version/toggle-theme
-git checkout master
-```
+- Modernized, responsive UI for Home, Register, Sign in, and Dashboard pages.
+- Theme toggle with light/dark mode support.
+- Improved layout structure and navigation for better readability.
+- Deploy-ready setup for Netlify with `@netlify/plugin-nextjs`.
 
-## Getting started
+## Screenshots
+
+| Home | Auth |
+|------|------|
+| ![Home](./screenshots/home.svg) | ![Auth](./screenshots/auth.svg) |
+
+## Tech stack
+
+- Next.js 14
+- React 18
+- TypeScript
+- Tailwind CSS
+- Netlify
+
+## Local development
 
 ```bash
 npm install
 npm run dev
 ```
+
+Open http://localhost:3000
+
+## Build
+
+```bash
+npm run build
+npm start
+```
+
+## Branch history
+
+The original progressive course branches are still available:
+
+- `version/initial`
+- `version/toggle-theme`
+- `version/toggle-theme-icon`
+- `version/all-routings`
+- `version/user-register`
+- `version/error-logs`
+- `version/logout-blogpost`
+- `version/logout-jwt`
+- `master`
